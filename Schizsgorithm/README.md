@@ -1,44 +1,106 @@
-							                                                      	Schizsgorithm
+# Schizsgorithm: EEG-Based Schizophrenia Classification
 
+Schizsgorithm is a machine learning pipeline for classifying schizophrenia from EEG recordings. The project uses MNE for EEG preprocessing, extracts statistical features from fixed-length signal windows, and evaluates classification performance with subject-aware cross-validation to reduce leakage across individuals.
 
+---
 
-The Schizsgorithm is a complex machine learning algorithm capable of schizophrenia detection via electrode data from EEG. The current accuracy is 66%
-for this model. The project is open source and can be used by variety of people including enthusiastic geeks all the way till medical institution. It was created
-by Srinidhi Srujan Murthy, founder of CSX laboratories. This is our first open source project and research project.Schizsgorithm will be published on our website and will
-be under an MIT license.
+## Overview
 
+EEG is a noisy, high-variance biosignal with substantial variability across subjects and recording sessions. This project explores whether schizophrenia-related patterns can be identified from EEG recordings using a reproducible preprocessing and feature-based classification pipeline.
 
+The core idea is:
 
-The Schizsgorithm model is a life changing biotech tool that can instantly detect neural brain activity and identify whether a person is schiziophernic.
-The model should be connected to EEGs for recieving its input sources.It does not require hardware components to function due to everything just being a model.
-The model has been trained with loads of EEG data and has an accuracy metric score above 50%.Schizsgorithm employees a pipeline for cunducting various data
-processes and acquires a scaler for restructuring data.For cross-validation purposes we use GroupKfold which is similar to the K fold cross validation.A logistic
-regression is the main model that is being used for prediction making.Lastly a Grid search CV is used for prediction and training the model.
+1. Load raw EEG recordings from EDF files  
+2. Preprocess the signal using MNE  
+3. Split continuous recordings into fixed-length epochs  
+4. Extract statistical features from each epoch  
+5. Train and evaluate a classifier using group-aware cross-validation  
 
+---
 
-My primary motivation as to writing a model to detect Schiziophernia is so make sure people/patients are correctly identified with reference to their brain activity.
-This can help doctors detect whether patients need Schiziophernic treatment or not.Worldwide there are 24 million schiziophernic patients and there has not been any 
-tool that can detect if a person has it.In order to fill in the unsaturated biotech market I decided to develop schizsgorithm.
+## Pipeline
 
+### 1. Data Loading
+EEG recordings are loaded from EDF files using `mne.io.read_raw_edf`.
 
+- Files beginning with `h` are treated as healthy controls
+- Files beginning with `s` are treated as schizophrenia cases
 
-Specifically this Product can be used by people in a variety of fields.Computer Science researchers can study the model and can be used in their teaching curriculum to explain 
-to students how machine learning can be used in real world application.Computer science researchers can use it to explain how ML models reverse engineer the connections between 
-data and labels and how predictions can be made.Doctors or neuralogists are the main customers/users of the product since they will be using it on their mental patients to see 
-whether schiziophernic treatment in needed or not.
+### 2. Preprocessing
+Each EEG recording is preprocessed with:
 
+- EEG re-referencing
+- Band-pass filtering from **0.5 Hz to 60 Hz**
+- Segmentation into **5-second fixed-length epochs** with **1-second overlap**
 
+This converts each subject recording into multiple fixed-length EEG windows.
 
+### 3. Feature Extraction
+For each epoch, the pipeline computes statistical features channel-wise, including:
 
-The credits go towards Danial Yeager.Danial Yeager is a neural computer science researcher at UC Berkeley who has written an approach on wireless neural interface for 
-prosthetics.That has helped me start my expedition in this topic.I was able to understand about neuron anatomy and how EEGs work.Additionally credits go towards coding
-non profits such as freecodecamp.org and codewithmosh as their videos help me understand how ML works and how to write machine learning works.Lastly the credits go to Talha Anwar a 
-Computer Science enthusiast for helping me get datasets.
+- Mean
+- Standard deviation
+- Peak-to-peak amplitude
+- Variance
+- Minimum
+- Maximum
+- Argmin
+- Argmax
+- RMS
+- Absolute difference signal
+- Skewness
+- Kurtosis
 
+These features are concatenated into a single feature vector for classification.
 
+### 4. Modeling
+The current implementation uses:
 
+- `StandardScaler`
+- `LogisticRegression`
+- `GridSearchCV` for tuning the regularization parameter `C`
 
+### 5. Evaluation
+The model is evaluated using **GroupKFold**, where each subject is treated as a separate group.
 
+This is important because it prevents epochs from the same subject from appearing in both training and validation folds, reducing subject leakage and giving a more realistic estimate of generalization.
 
-The Schizsgorithm is of great use when it comes to helping people and inspiring new research in the industry.It will have great impact once published and used by people.
-The model was built with compassion and passion to make sure the best result is delivered.
+---
+
+## Why Group-Aware Validation Matters
+
+A major risk in EEG classification is overly optimistic performance caused by leakage across windows from the same subject. This project explicitly addresses that by grouping all epochs from a single subject together during cross-validation.
+
+That means the classifier is evaluated more like a real-world system:
+- train on some subjects
+- test on unseen subjects
+
+---
+
+## Current Method
+
+### Preprocessing
+- Re-reference EEG
+- Filter from 0.5 to 60 Hz
+- Epoch into 5-second windows with 1-second overlap
+
+### Features
+Handcrafted statistical descriptors computed per channel and concatenated into one feature vector.
+
+### Classifier
+- Logistic Regression
+- Hyperparameter tuning over:
+  - `C = [0.1, 0.6, 2, 3, 4, 7, 34]`
+
+### Cross-Validation
+- `GroupKFold(n_splits=5)`
+
+---
+
+## Repository Structure
+
+```text
+.
+├── datafiles/              # EDF files
+├── main.py                 # training / evaluation pipeline
+└── README.md
